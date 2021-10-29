@@ -1,0 +1,54 @@
+#!/bin/sh
+[ -c /dev/urandom ] && {
+  read -r seed < /dev/urandom # read a single line of urandom
+  seed=${#seed}
+} || { # otherwise generate a seed by counting stuff
+  n=0;
+  [ -x /bin/ ] && { # if we can access /bin count the files in it
+    for i in /bin/*; do
+      [ -f "$i" ] && : $((n+=1))
+    done
+  }
+  [ -x /tmp/ ] && {
+    for i in /tmp/*; do
+      [ -e "$i" ] && : $((n+=1))
+    done
+  }
+  [ -x /var/ ] && {
+    for i in /var/*; do
+      [ -e "$i" ] && : $((n+=1))
+    done
+  }
+  : $((n+=${#PWD})); : $((n+=${#0}))
+  seed="${n:-100}"
+}
+# $seed should now contain a number
+for i in 1 2 3 4 5; do # 5 times
+  [ ! "$((seed*seed))" -gt "$seed" ] && break # break if we have reached a max length num
+  seed=$((seed*seed))
+  seed="${seed#?}"; seed="${seed%?}" # use the middle-square method to generate a new seed
+done
+# LCG imp follows
+# generate a modulus (m) from the length of $seed and then detemine if its a prime
+m="${#seed}"; [ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 ] || : $((m+=1)) # if prime
+#             ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
+p=0 # $p is the next prime and can be determined using a while loop that adds 1 to it until it becomes a prime
+if [ "$((m%2))" -eq 0 ]; then # now determine the prime factors of $m
+  f=$((m/2)) # next prime is 3; 5
+  p=3 # we know the next prime
+  until [ ! "$((f%2))" -eq 0 -a ! "$((f%3))" -eq 0 ]; do
+    f=$((f/p))
+    : $((p+=1)); until [ ! "$((p%2))" -eq 0 -a ! "$((p%3))" -eq 0 ]; do
+      : $((P+=1))
+    done
+  done
+elif [ "$((m%3))" -eq 0 ]; then
+  f=$((m/3)) # next prime is 5; 7
+  p=5 
+  until [ ! "$((f%2))" -eq 0 -a ! "$((f%3))" -eq 0 ]; do
+    f=$((f/p))
+    : $((p+=1)); until [ ! "$((p%2))" -eq 0 -a ! "$((p%3))" -eq 0 ]; do
+      : $((p+=1))
+    done
+  done # until $f is prime do the above
+fi # $f is the prime factor of $m
