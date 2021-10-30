@@ -22,33 +22,55 @@
   : $((n+=${#PWD})); : $((n+=${#0}))
   seed="${n:-100}"
 }
+[ "$1" ] && seed="$1" # allow a seed to be set via $1
 # $seed should now contain a number
-for i in 1 2 3 4 5; do # 5 times
-  [ ! "$((seed*seed))" -gt "$seed" ] && break # break if we have reached a max length num
-  seed=$((seed*seed))
-  seed="${seed#?}"; seed="${seed%?}" # use the middle-square method to generate a new seed
+# the idea here is the $seed should be /slightly/ random or at least dicated by the contents of the current systen
+# now we must remove all possible leading 0's
+until [ ${seed#0} = $seed ]; do
+  seed=${seed#0}
 done
+# echo "being LCG"
 # LCG imp follows
 # generate a modulus (m) from the length of $seed and then detemine if its a prime
-m="${#seed}"; [ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 ] || : $((m+=1)) # if prime
-#             ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
+m="$(( ${#seed} * 10))"; [ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 -a "$m" -gt 2 -a "$m" -gt 3 ] || : $((m+=1)) # if prime
+#                        ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
 p=0 # $p is the next prime and can be determined using a while loop that adds 1 to it until it becomes a prime
-if [ "$((m%2))" -eq 0 ]; then # now determine the prime factors of $m
+#echo "determine modulus and its factors"
+if [ $((m%2)) -eq 0 ]; then # now determine the prime factors of $m
   f=$((m/2)) # next prime is 3; 5
-  p=3 # we know the next prime
-  until [ ! "$((f%2))" -eq 0 -a ! "$((f%3))" -eq 0 ]; do
-    f=$((f/p))
-    : $((p+=1)); until [ ! "$((p%2))" -eq 0 -a ! "$((p%3))" -eq 0 ]; do
-      : $((P+=1))
-    done
-  done
-elif [ "$((m%3))" -eq 0 ]; then
-  f=$((m/3)) # next prime is 5; 7
-  p=5 
-  until [ ! "$((f%2))" -eq 0 -a ! "$((f%3))" -eq 0 ]; do
-    f=$((f/p))
-    : $((p+=1)); until [ ! "$((p%2))" -eq 0 -a ! "$((p%3))" -eq 0 ]; do
+  p=2
+  until [ $((f % 2)) -gt 0 -a $(( f % 3)) -gt 0 ]; do
+    [ $((f%p)) -eq 0 ] && {
+      f=$((f/p))
+    } || {
       : $((p+=1))
-    done
+      until [ $((p%2)) -gt 0 -a $((p%3)) -gt 0 ] || [ "$p" -eq 2 -o "$p" -eq 3 ]; do
+        : $((p+=1))
+      done
+    }
+  done
+elif [ $((m%3)) -eq 0 ]; then
+  f=$((m/3)) # next prime is 5; 7
+  p=3
+  until [ $((f % 2)) -gt 0 -a $((f % 3)) -gt 0 ]; do
+    [ $((f%p)) -eq 0 ] && {
+      f=$((f/p))
+    } || {
+      : $((p+=1)); until [ $((p%2)) -gt 0 -a $((p%3)) -gt 0 ] || [ "$p" -eq 2 -o "$p" -eq 3 ]; do
+        : $((p+=1))
+      done
+    }
   done # until $f is prime do the above
-fi # $f is the prime factor of $m
+fi # $f is the prime factor of $m; $f*2 = $m
+if [ "$seed" -gt 75 ]; then
+  a="$((seed-75))" # here the multiplier (a) is seed (z) - 75 # the 75 here is taken from the ZX81's multiplier (a) from its own LCG
+elif [ "$seed" -gt 6 ]; then # the 6 here for fallback is literally random
+  a="$((seed-6))"
+fi
+until [ "$(( (a-1)%f ))" -eq 0 ]; do # the multiplier (a) -1 MUST be a multiple of $f
+  : $((a+=1)) # add to a until a-1 is a multiple of $f
+done
+# increment (c) and the modulus (m) must be co-prime; and two random primes should be co-prime therefore set $c to $p; see above
+# the final digit used by LCG will be the seed (z) # z & c will not be defined to save on memory
+seed=$(( ((a*seed)+p)%m )) # finally calculate a need seed via the formula: (a*z + c)%m and return it
+echo "$seed"
