@@ -32,9 +32,17 @@ done
 # echo "being LCG"
 # LCG imp follows
 # generate a modulus (m) from the length of $seed and then detemine if its a prime
-m="$(( ${#seed} * 65536))"; [ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 -a "$m" -gt 2 -a "$m" -gt 3 ] || : $((m+=1)) # if prime
+powerindex="2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216 33554432 67108864 134217728 268435456 536870912 1073741824 2147483648 4294967296 8589934592 17179869184 34359738368 68719476736 137438953472 274877906944 549755813888 1099511627776 2199023255552 4398046511104 8796093022208 17592186044416 35184372088832 70368744177664 140737488355328 281474976710656 562949953421312 1125899906842624 2251799813685248 4503599627370496 9007199254740992 18014398509481984 36028797018963968 72057594037927936 144115188075855872 288230376151711744 576460752303423488 1152921504606846976" # index of 2^1-60
+m="${#seed}"; IFS=" "; set -- ${powerindex}; p=$((m+10))
+[ "$m" -gt 9 ] && {
+  shift $((p-9)); eval p=\${$m}
+} || {
+  eval p=\${$m}
+}
+p=$((p*seed));
+m=$((m*p)); p=0
+[ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 -a "$m" -gt 2 -a "$m" -gt 3 ] || : $((m+=1)) # if prime
 # 65536 is 2^16; causing the seed to be some multiple of 2^<> causes an increase in randomness from my basic testing
-# a smarter way might be to have an index of powers of 2; then add 10 to $m and multiply its orginal value based upon the same power it pulls from the index
 #                           ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
 # typically we want $m to be a power of 2; the larger the better; however (2^63)-1 is the max size dash can hold before an overflow happens
 # ie $(( 4611686018427387904*2 )) produces -9223372036854775808; this is correct, minus the leading -
