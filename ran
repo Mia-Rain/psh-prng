@@ -32,8 +32,21 @@ done
 # echo "being LCG"
 # LCG imp follows
 # generate a modulus (m) from the length of $seed and then detemine if its a prime
-m="$(( ${#seed} * 10))"; [ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 -a "$m" -gt 2 -a "$m" -gt 3 ] || : $((m+=1)) # if prime
-#                        ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
+m="$(( ${#seed} * 65536))"; [ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 -a "$m" -gt 2 -a "$m" -gt 3 ] || : $((m+=1)) # if prime
+# 65536 is 2^16; causing the seed to be some multiple of 2^<> causes an increase in randomness from my basic testing
+# a smarter way might be to have an index of powers of 2; then add 10 to $m and multiply its orginal value based upon the same power it pulls from the index
+#                           ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
+# typically we want $m to be a power of 2; the larger the better; however (2^63)-1 is the max size dash can hold before an overflow happens
+# ie $(( 4611686018427387904*2 )) produces -9223372036854775808; this is correct, minus the leading -
+# any operations on this number that should produce a larger number cause said number to act as if it was a negative
+# note that $(( 4611686018427387904*2 -1)) does infact produce (2^63)-1; adding even 1 to this results in an overflow
+##
+# if we do infact want to make $m a power of to, the simplest process is an until loop
+# $((x&(x-1))) where x is $m will produce 0 if x/$m is a power of 2
+# the below works perfectly; however, requiring $m to be a power of 2 causes $seed to produce a pattern
+#until [ "$((m&(m-1)))" -eq 0 ]; do
+#  : $((m+=1))
+#done
 p=0 # $p is the next prime and can be determined using a while loop that adds 1 to it until it becomes a prime
 #echo "determine modulus and its factors"
 if [ $((m%2)) -eq 0 ]; then # now determine the prime factors of $m
