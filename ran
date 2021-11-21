@@ -103,9 +103,18 @@ fi
 until [ "$(( (a-1)%f ))" -eq 0 ]; do # the multiplier (a) -1 MUST be a multiple of $f
   : $((a+=1)) # add to a until a-1 is a multiple of $f
 done
+# o is used to allow $seed to end in an odd number
+# for .. some reason, the last digit of my edited LCG is ALWAYS an even number
+# the idea here is, a single line of urandom's output is (almost) random data
+# thus count the length of said line, grab it's last digit, and add it (((a*seed)+p)%m)*m  
+# -- o should be any number 0-9
+read -r o < /dev/urandom; o=${#o}
+until [ "${#o}" -eq 1 ]; do
+  o=${o#?}
+done #; echo "$o -"
 # increment (c) and the modulus (m) must be co-prime; and two random primes should be co-prime therefore set $c to $p; see above
 # the final digit used by LCG will be the seed (z) # z & c will not be defined to save on memory
-seed=$(( ((a*seed)+p)%m *m )) # finally calculate a need seed via the formula: (a*z + c)%m and return it
+seed=$(( ((a*seed)+p)%m *m +o )) # finally calculate a need seed via the formula: (a*z + c)%m and return it
 # an extra *m is used as %m alone causes a 2/3 to be highly likely 
 # after this change it seems no number repeats over 150 runs
 echo "$seed"
