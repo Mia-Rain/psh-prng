@@ -28,8 +28,9 @@ mseed() {
 mseed
 [ "$1" ] && {
   seed="$1" # allow a seed to be set via $1
+  mseed="$(mseed)"
   [ -c /dev/urandom ] && {
-    seed=$((seed*$(mseed))) # if we have access to hardware randomness use it.
+    seed=$((seed*mseed)) # if we have access to hardware randomness use it.
   }
 }
 # $seed should now contain a number
