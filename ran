@@ -4,25 +4,18 @@ mseed() {
   [ -c /dev/urandom ] && {
     read -r seed < /dev/urandom # read a single line of urandom
     seed=${#seed}
-  } || { # otherwise generate a seed by counting stuff
-    n=0;
-    [ -x /bin/ ] && { # if we can access /bin count the files in it
-      for i in /bin/*; do
-        [ -f "$i" ] && : $((n+=1))
-      done
-    }
-    [ -x /tmp/ ] && {
-      for i in /tmp/*; do
-        [ -e "$i" ] && : $((n+=1))
-      done
-    }
-    [ -x /var/ ] && {
-      for i in /var/*; do
-        [ -e "$i" ] && : $((n+=1))
-      done
-    }
-    : $((n+=${#PWD})); : $((n+=${#0}))
-    seed="${n:-100}"
+  } || { # otherwise generate a seed using pids
+    echo "!! WARNING: /dev/urandom IS MISSING -- HARDWARE RANDOMNESS CANNOT BE USED -- USING PID !!" >&2
+    echo "!!                              -- CONTINUE AT YOUR OWN RISK --                        !!" >&2
+    : & wait; o="$!"; for i in 1 2 3 4 5; do
+      : & wait # generate new $!
+      o=$((o%o+$!*o))
+    done
+    for i in 1 2 3; do
+      : & wait
+    done
+    seed="$((o%o+$!*${#o}))" # greatly shorten seed
+    # large seeds produce large numbers = more randomness
   }
 } # make seed
 mseed
@@ -109,7 +102,21 @@ done
 # the idea here is, a single line of urandom's output is (almost) random data
 # thus count the length of said line, grab it's last digit, and add it (((a*seed)+p)%m)*m  
 # -- o should be any number 0-9
-read -r o < /dev/urandom; o=${#o}
+[ -c /dev/urandom ] && {
+  read -r o < /dev/urandom
+  o="${#o}"
+} || {
+  echo "!! WARNING: /dev/urandom IS MISSING -- HARDWARE RANDOMNESS CANNOT BE USED -- USING PID !!" >&2
+  echo "!!                              -- CONTINUE AT YOUR OWN RISK --                        !!" >&2
+  # warn about lack of hardware randomness
+  : & wait
+  o="$!" # pid is "RANDOM"
+  for i in 1 2 3; do
+    : & wait
+  done # 3 pid calls
+  o="$((o%o*o+$!))" # this allows the last digit to actually be random
+}
+
 until [ "${#o}" -eq 1 ]; do
   o=${o#?}
 done #; echo "$o -"
