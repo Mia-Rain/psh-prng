@@ -125,4 +125,4 @@ done #; echo "$o -"
 seed=$(( ((a*seed)+p)%m *m +o )) # finally calculate a need seed via the formula: (a*z + c)%m and return it
 # an extra *m is used as %m alone causes a 2/3 to be highly likely 
 # after this change it seems no number repeats over 150 runs
-echo "$seed"
+echo "0.$seed"
