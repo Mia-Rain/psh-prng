@@ -1,10 +1,11 @@
 #!/bin/sh
 set -e # there should be ZERO errors
 mseed() {
-  [ -c /dev/urandom ] && {
+  [ -c /dev/urandom -a ! "$PID" ] && {
     read -r seed < /dev/urandom # read a single line of urandom
     seed=${#seed}
   } || { # otherwise generate a seed using pids
+  # $PID may be set to force usage of pids
     echo "!! WARNING: /dev/urandom IS MISSING -- HARDWARE RANDOMNESS CANNOT BE USED -- USING PID !!" >&2
     echo "!!                              -- CONTINUE AT YOUR OWN RISK --                        !!" >&2
     : & wait; o="$!"; for i in 1 2 3 4 5; do
@@ -18,14 +19,13 @@ mseed() {
     # large seeds produce large numbers = more randomness
   }
 } # make seed
-mseed
 [ "$1" ] && {
   seed="$1" # allow a seed to be set via $1
   mseed="$(mseed)"
   [ -c /dev/urandom ] && {
     seed=$((seed*mseed)) # if we have access to hardware randomness use it.
   }
-}
+} || mseed
 # $seed should now contain a number
 # the idea here is the $seed should be /slightly/ random or at least dicated by the contents of the current systen
 until [ "${seed#0}" -eq "$seed" -a "$seed" -gt 3 ] 2>/dev/null; do
