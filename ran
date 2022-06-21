@@ -1,13 +1,10 @@
 #!/bin/sh
-set -e # there should be ZERO errors
 mseed() {
   [ -c /dev/urandom -a ! "$PID" ] && {
     read -r seed < /dev/urandom # read a single line of urandom
     seed=${#seed}
   } || { # otherwise generate a seed using pids
   # $PID may be set to force usage of pids
-    echo "!! WARNING: /dev/urandom IS MISSING -- HARDWARE RANDOMNESS CANNOT BE USED -- USING PID !!" >&2
-    echo "!!                              -- CONTINUE AT YOUR OWN RISK --                        !!" >&2
     : & wait; o="$!"; for i in 1 2 3 4 5; do
       : & wait # generate new $!
       o=$((o%o+$!*o))
@@ -18,111 +15,46 @@ mseed() {
     seed="$((o%o+$!*${#o}))" # greatly shorten seed
     # large seeds produce large numbers = more randomness
   }
-} # make seed
-[ "$1" ] && {
-  seed="$1" # allow a seed to be set via $1
-  mseed="$(mseed)"
+  # L105
   [ -c /dev/urandom ] && {
-    seed=$((seed*mseed)) # if we have access to hardware randomness use it.
-  }
-} || mseed
-# $seed should now contain a number
-# the idea here is the $seed should be /slightly/ random or at least dicated by the contents of the current systen
-until [ "${seed#0}" -eq "$seed" -a "$seed" -gt 3 ] 2>/dev/null; do
-  [ "$1" ] && {
-    : $((seed+=1)) 
-  } || mseed
-done
-[ "$seed" -o "$seed" -gt 0 ] || { echo 'failed to generate seed ...'; exit 1; }
-# echo "being LCG"
-# LCG imp follows
-# generate a modulus (m) from the length of $seed and then detemine if its a prime
-#printf '%s ' "$seed"
-powerindex="2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216 33554432 67108864 134217728 268435456 536870912 1073741824 2147483648 4294967296 8589934592 17179869184 34359738368 68719476736 137438953472 274877906944 549755813888 1099511627776 2199023255552 4398046511104 8796093022208 17592186044416 35184372088832 70368744177664 140737488355328 281474976710656 562949953421312 1125899906842624 2251799813685248 4503599627370496 9007199254740992 18014398509481984 36028797018963968 72057594037927936 144115188075855872 288230376151711744 576460752303423488 1152921504606846976" # index of 2^1-60
-m="${#seed}"; IFS=" "; set -- ${powerindex}; p=$((m+10))
-[ "$m" -gt 9 ] && {
-  shift $((p-9)); eval p=\${$m}
-} || {
-  eval p=\${$m}
-}
-p=$(((p*seed)));
-m=$((m*p)); p=0
-[ "$((m%2))" -eq 0 -o "$((m%3))" -eq 0 -a "$m" -gt 2 -a "$m" -gt 3 ] || : $((m+=1)) # if prime
-# 65536 is 2^16; causing the seed to be some multiple of 2^<> causes an increase in randomness from my basic testing
-#                           ^ if not a multiple of 2 or 3 expect the number to be prime and increase it by 1
-# typically we want $m to be a power of 2; the larger the better; however (2^63)-1 is the max size dash can hold before an overflow happens
-# ie $(( 4611686018427387904*2 )) produces -9223372036854775808; this is correct, minus the leading -
-# any operations on this number that should produce a larger number cause said number to act as if it was a negative
-# note that $(( 4611686018427387904*2 -1)) does infact produce (2^63)-1; adding even 1 to this results in an overflow
-##
-# if we do infact want to make $m a power of 2, the simplest process is an until loop
-# $((x&(x-1))) where x is $m will produce 0 if x/$m is a power of 2
-# the below works perfectly; however, requiring $m to be a power of 2 causes $seed to produce a pattern
-#until [ "$((m&(m-1)))" -eq 0 ]; do
-#  : $((m+=1))
-#done
-p=0 # $p is the next prime and can be determined using a while loop that adds 1 to it until it becomes a prime
-#echo "determine modulus and its factors"
-if [ $((m%2)) -eq 0 ]; then # now determine the prime factors of $m
-  f=$((m/2)) # next prime is 3; 5
-  p=2
-  until [ $((f % 2)) -gt 0 -a $(( f % 3)) -gt 0 ]; do
-    [ $((f%p)) -eq 0 ] && {
-      f=$((f/p))
-    } || {
-      : $((p+=1))
-      until [ $((p%2)) -gt 0 -a $((p%3)) -gt 0 ] || [ "$p" -eq 2 -o "$p" -eq 3 ]; do
-        : $((p+=1))
-      done
-    }
-  done
-elif [ $((m%3)) -eq 0 ]; then
-  f=$((m/3)) # next prime is 5; 7
-  p=3
-  until [ $((f % 2)) -gt 0 -a $((f % 3)) -gt 0 ]; do
-    [ $((f%p)) -eq 0 ] && {
-      f=$((f/p))
-    } || {
-      : $((p+=1)); until [ $((p%2)) -gt 0 -a $((p%3)) -gt 0 ] || [ "$p" -eq 2 -o "$p" -eq 3 ]; do
-        : $((p+=1))
-      done
-    }
-  done # until $f is prime do the above
-fi # $f is the prime factor of $m; $f*2 = $m
-if [ "$seed" -gt 75 ]; then
-  a="$((seed-75))" # here the multiplier (a) is seed (z) - 75 # the 75 here is taken from the ZX81's multiplier (a) from its own LCG
-elif [ "$seed" -gt 6 ]; then # the 6 here for fallback is literally random
-  a="$((seed-6))"
-fi
-until [ "$(( (a-1)%f ))" -eq 0 ]; do # the multiplier (a) -1 MUST be a multiple of $f
-  : $((a+=1)) # add to a until a-1 is a multiple of $f
-done
-# o is used to allow $seed to end in an odd number
-# for .. some reason, the last digit of my edited LCG is ALWAYS an even number
-# the idea here is, a single line of urandom's output is (almost) random data
-# thus count the length of said line, grab it's last digit, and add it (((a*seed)+p)%m)*m  
-# -- o should be any number 0-9
-[ -c /dev/urandom ] && {
-  read -r o < /dev/urandom
-  o="${#o}"
-} || {
-  echo "!! WARNING: /dev/urandom IS MISSING -- HARDWARE RANDOMNESS CANNOT BE USED -- USING PID !!" >&2
-  echo "!!                              -- CONTINUE AT YOUR OWN RISK --                        !!" >&2
-  # warn about lack of hardware randomness
-  : & wait
-  o="$!" # pid is "RANDOM"
-  for i in 1 2 3; do
+    read -r o < /dev/urandom
+    o="${#o}"
+  } || {
+    # warn about lack of hardware randomness
     : & wait
-  done # 3 pid calls
-  o="$((o%o*o+$!))" # this allows the last digit to actually be random
+    o="$!" # pid is "RANDOM"
+    for i in 1 2 3; do
+      : & wait
+    done # 3 pid calls
+    o="$((o%o*o+$!))" # this allows the last digit to actually be random
+  } 
+  : $((seed+=o))
+  # use $o to add possibility of odd number
 }
+# make seed ^
+# ripped from master branch
+unset s0 s1 seed
+case "$1" in
+  "") mseed && s0=$seed ;;
+  *) s0=$1
+esac
+case "$2" in
+  "") mseed && s1=$seed ;;
+  *) s1=$2
+esac
+# allow for manual seed ^
 
-until [ "${#o}" -eq 1 ]; do
-  o=${o#?}
-done #; echo "$o -"
-# increment (c) and the modulus (m) must be co-prime; and two random primes should be co-prime therefore set $c to $p; see above
-# the final digit used by LCG will be the seed (z) # z & c will not be defined to save on memory
-seed=$(( ((a*seed)+p)%m *m +o )) # finally calculate a need seed via the formula: (a*z + c)%m and return it
-# an extra *m is used as %m alone causes a 2/3 to be highly likely 
-# after this change it seems no number repeats over 150 runs
-echo "0.$seed"
+# an attempt at xoroshiro64** follows
+# this is based off the reference code @ https://prng.di.unimi.it/xoroshiro64starstar.c
+# keep in mind I have no idea how most of this works
+rotl() {
+  echo $(( ($1 << $2) | ( $1 >> (32 - $2) ) ))
+} # return (x << k) | (x >> (32 - k))
+next() {
+  # s0/s1 are generated above @ L42-49
+  : $((s1 ^= s0))
+  s0=$(($(rotl s0 26) ^ s1 ^ (s1 << 9)))
+  s1=$(rotl $s1 13)
+  echo $(($(rotl $((s0*0x9E3779BB)) 5)*5)) # result
+}
+o=$(next); echo 0.${o#-}

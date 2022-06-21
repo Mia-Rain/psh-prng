@@ -3,6 +3,15 @@ psh-prng
 -- an attempt at pure POSIX sh random number generation
 -- 100% POSIX compliant; if /dev/urandom is missing PIDs are used
 ---
+xoroshiro64**
+-- this branch implements xoroshiro64**
+-- hopefully this will have less issues the patterns 
+---
+Notes
+-- DO NOT use this for encryption
+-- I am unable to verify if this algorithm is secure
+-- additionally if PIDs are used for seeds, generation can likely be manipulated
+---
 Bug/Progress tracking
 -- a bug tracker is present at 
 ---- https://bugs.dicksdeathabove.xyz/~mia/bugs.psh-prng/
