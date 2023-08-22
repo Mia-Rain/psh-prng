@@ -12,7 +12,3 @@ Notes
 -- I am unable to verify if this algorithm is secure
 -- additionally if PIDs are used for seeds, generation can likely be manipulated
 ---
-Bug/Progress tracking
--- a bug tracker is present at 
----- https://bugs.dicksdeathabove.xyz/~mia/bugs.psh-prng/
----
