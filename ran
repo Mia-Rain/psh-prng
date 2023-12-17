@@ -5,6 +5,7 @@ mseed() {
     seed=${#seed}
   } || { # otherwise generate a seed using pids
   # $PID may be set to force usage of pids
+    echo '!!USING PIDS!!' >&2
     : & wait; o="$!"; for i in 1 2 3 4 5; do
       : & wait # generate new $!
       o=$((o%o+$!*o))
@@ -30,19 +31,50 @@ mseed() {
   } 
   : $((seed+=o))
   # use $o to add possibility of odd number
+  printf '%s\n' "$seed"
 }
 # make seed ^
-# ripped from master branch
+sadd() {
+  str="$1"
+  while [ "$str" ]; do
+    next="${str#?}"; current="${str%$next}"
+    out=$(($(printf "%d" "\"$current")+${out:-0}))
+    str="$next"
+  done
+  printf '%s\n' "$out"
+  unset out str next
+}
 unset s0 s1 seed
-case "$1" in
-  "") mseed && s0=$seed ;;
-  *) s0=$1
-esac
-case "$2" in
-  "") mseed && s1=$seed ;;
-  *) s1=$2
-esac
-# allow for manual seed ^
+
+
+[ "$1" ] || set -- "$(mseed)" $2 $3
+[ "$1" -a ! "$2" ] && set -- $1 0
+# first check if $2 is unset
+## if $2 is unset, $3 will also be unset
+if [ ! "$PID" ] && [ "$3" != "uran" ]; then
+  PID="$3"
+fi
+# PID vs uran actually has no effect if a seed is given
+
+[ "$1" -eq "$1" ] 2>/dev/null || {
+  set -- $(sadd "$1") "$2" "$3"
+}
+[ "$2" -eq "$2" ] 2>/dev/null || {
+  set -- "$1" "$(sadd $2)" "$3"
+}
+# sadd should add together all the ascii values of $1
+
+set -- ${1:-$(mseed)} ${2:-$(mseed)}
+# then mseed takes over
+
+s0="$1"; s1="$2"
+
+# if no second seed is given, default to 0
+# otherwise the output will differ for each seed
+##
+# the better idea is to take $1 and split it
+# however this requires the $1 be at least 2char in size
+
 
 # an attempt at xoroshiro64** follows
 # this is based off the reference code @ https://prng.di.unimi.it/xoroshiro64starstar.c

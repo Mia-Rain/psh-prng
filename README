@@ -3,9 +3,32 @@ psh-prng
 -- an attempt at pure POSIX sh random number generation
 -- 100% POSIX compliant; if /dev/urandom is missing PIDs are used
 ---
+Usage
+-- ./ran [seed] [seed2] [method]
+-- seed
+  >> can either be a number or string
+  >>>> if a string is given the decimal ascii value
+  >>>> of each character is added together and used as the seed 
+-- seed2
+  >> xoroshiro64 expects 2 seeds
+-- method
+  >> pid or uran
+  >>>> pid
+  >>>>>> pids are used to generate a seed
+  >>>> uran
+  >>>>>> uses /dev/urandom if present to generate a seed
+---
+Seed generation
+-- the code used here to generate a seed is hand made
+---- uran is highly preferred as pids can be easily manipulated
+---- and are sequential unless the system has random pids
+---- however this isn't(?) present on Linux
+  >> random pids causes a performance hit
+  >> and it is widely debated if it has any actual use
+---
 xoroshiro64**
 -- this branch implements xoroshiro64**
--- hopefully this will have less issues the patterns 
+-- hopefully this will have less patterns 
 ---
 Notes
 -- DO NOT use this for encryption
