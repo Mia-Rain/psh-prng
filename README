@@ -15,8 +15,12 @@ Usage
   >> pid or uran
   >>>> pid
   >>>>>> pids are used to generate a seed
+  >>>>>>>> pid generation produces a larger output
+  >>>>>>>> this is to counteract the fact that pids can be manipulated on Linux systems
   >>>> uran
   >>>>>> uses /dev/urandom if present to generate a seed
+  >> to set the method, supply $1 & $2 as `-`
+  >>>> ./ran - - pid
 ---
 Seed generation
 -- the code used here to generate a seed is hand made

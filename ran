@@ -47,7 +47,7 @@ sadd() {
 unset s0 s1 seed
 
 
-[ "$1" ] || set -- "$(mseed)" $2 $3
+[ "$1" ] || set -- "$(mseed)" "$(mseed)" "uran"
 [ "$1" -a ! "$2" ] && set -- $1 0
 # first check if $2 is unset
 ## if $2 is unset, $3 will also be unset
@@ -55,6 +55,10 @@ if [ ! "$PID" ] && [ "$3" != "uran" ]; then
   PID="$3"
 fi
 # PID vs uran actually has no effect if a seed is given
+[ "$1" = "-" -a "$2" = "-" -a "$3" ] && {
+  [ "$3" != "uran" ] && PID="$3"
+  set -- "$(mseed)" "$(mseed)" "$3"
+}
 
 [ "$1" -eq "$1" ] 2>/dev/null || {
   set -- $(sadd "$1") "$2" "$3"
